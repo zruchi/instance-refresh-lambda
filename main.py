@@ -23,6 +23,7 @@ def get_latest_image(ec2):
         ],
         Owners=['self']
     )
+
     sorted_ami = sorted(images['Images'], key=lambda x: x['CreationDate'], reverse=True)
     latest_ami = sorted_ami[0]['ImageId']
 
@@ -46,7 +47,7 @@ def launch_template_versions(ec2, image_id):
         try:
             response = ec2.create_launch_template_version(
                 LaunchTemplateId=template_id,
-                SourceVersion=template_version,
+                SourceVersion=str(template_version),
                 LaunchTemplateData={
                     'ImageId': image_id,
                 }
@@ -56,22 +57,27 @@ def launch_template_versions(ec2, image_id):
 
         # now if that is a success set the new version as the default
         default_version = response['LaunchTemplateVersion']['VersionNumber']
-        logging.info('Setting the %s as the default template version.', default_version)
+        logging.info('Setting the version %s as the default template version.', default_version)
         ec2.modify_launch_template(
             LaunchTemplateId=template_id,
-            DefaultVersion=default_version
+            DefaultVersion=str(default_version)
         )
 
         # we can't keep increasing the template version
         # that is cumbersome to manage a huge number of template version
         # we should keep the number manageable maybe 10 version?
         versions = template['LaunchTemplateVersions']
+        version_to_delete = []
         while len(versions) > 10:
-            logging.info('Deleting version: %', versions[-1]['VersionNumber'])
-            ec2.delete_launch_template_versions(
-                LaunchTemplateId=template_id,
-                Versions=[versions[-1]['VersionNumber']]
-            )
+            version_to_delete.append(str(versions[-1]['VersionNumber']))
+            versions.pop(-1)
+
+        logging.info('Deleting version: %s', version_to_delete)
+        ec2.delete_launch_template_versions(
+            LaunchTemplateId=template_id,
+            Versions=version_to_delete
+        )
+
     else:
         logging.info('The image is still current - current template version is: %s', template_version)
         return
@@ -108,7 +114,7 @@ def trigger_refresh(asg, template):
                 DesiredConfiguration={
                     'LaunchTemplate': {
                         'LaunchTemplateId': template['template_id'],
-                        'Version': version
+                        'Version': str(version)
                     }
                 }
             )
