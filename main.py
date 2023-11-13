@@ -106,7 +106,7 @@ def trigger_refresh(asg, template):
     version = template['new_template_version']
     for group in scaling_groups['AutoScalingGroups']:
         group_name = group['AutoScalingGroupName']
-        logging.info('Rotating the auto-scaling group %s with template version %s', (group_name, version))
+        logging.info('Rotating the auto-scaling group %s with template version %s.', group_name, version)
         try:
             asg.start_instance_refresh(
                 AutoScalingGroupName=group_name,
