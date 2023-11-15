@@ -78,14 +78,15 @@ def launch_template_versions(ec2, image_id):
             Versions=version_to_delete
         )
 
+        # Update our dictionary with the new details
+        output['current_image_id'] = template_image
+        output['template_id'] = template_id
+        output['template_version'] = template_version
+        output['new_template_version'] = response['LaunchTemplateVersion']['VersionNumber']
+
     else:
         logging.info('The image is still current - current template version is: %s', template_version)
         return
-
-    output['current_image_id'] = template_image
-    output['template_id'] = template_id
-    output['template_version'] = template_version
-    output['new_template_version'] = response['LaunchTemplateVersion']['VersionNumber']
 
     return output
 
@@ -133,11 +134,13 @@ def main():
     handler.setFormatter(formatter)
     root.addHandler(handler)
 
-    runtime = os.getenv('AWS_EXECUTION_ENV')
-    if runtime is not None:
-        session = boto3.session.Session()
-    else:
-        session = boto3.session.Session(profile_name='sandbox1')
+    try:
+        aws_profile = os.environ['AWS_PROFILE']
+    except KeyError:
+        logging.error('No AWS_PROFILE env detected')
+        aws_profile = 'sandbox1'
+
+    session = boto3.session.Session(profile_name=aws_profile)
 
     region = os.getenv('AWS_REGION')
     if region is None:
